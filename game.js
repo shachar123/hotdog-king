@@ -190,13 +190,15 @@ function renderSigns() {
   const lbl = ds.querySelector("text");
   if (o.drink) {
     lbl.textContent = DRINK_NAME[o.drink];
-    num.textContent = o.drinkQty;
+    num.textContent = o.drinkQty <= 0 ? "✓" : o.drinkQty;
     if (o.drink === "vodka") { ds.classList.add("vodkaSign"); lbl.setAttribute("fill", "#7b2ff7"); }
     else { ds.classList.remove("vodkaSign"); lbl.setAttribute("fill", "#555"); }
+    num.setAttribute("fill", o.drinkQty <= 0 ? "#1d8a2e" : "#1c1c1c");
   } else {
     lbl.textContent = "שתייה";
     lbl.setAttribute("fill", "#555");
     num.textContent = "—";
+    num.setAttribute("fill", "#1c1c1c");
     ds.classList.remove("vodkaSign");
   }
 }
@@ -301,6 +303,12 @@ function bindDrink(drink) {
       drink === "vodka" ? sfx.vodka() : sfx.add();
       if (drink === "vodka") scorePop(box.x + box.width / 2, box.y - 20, "+10", "#7b2ff7");
       placeDrink(drink);
+    } else if (o.drink === drink && o.drinkQty <= 0) {
+      // שתייה נכונה אבל כבר הוספת — אין עונש
+      sfx.wrong();
+      scorePop(box.x + box.width / 2, box.y - 20, "כבר הוספת!", "#e08000");
+      state.stock[drink]++; // מחזיר את המלאי שנלקח
+      updateStationVisual(drink);
     } else {
       addScore(-1);
       sfx.wrong();
