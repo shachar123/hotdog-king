@@ -204,10 +204,10 @@ function sceneArt() {
   for (let i = 0; i < 4; i++) {
     const x = [370, 520, 670, 820][i];
     meters += `<g id="meter${i}">
-      <rect x="${x - 3}" y="118" width="6" height="78" fill="#777" stroke="${OUT}" stroke-width="2"/>
-      <rect x="${x - 16}" y="36" width="32" height="88" rx="4" fill="#f4f4f4" stroke="${OUT}" stroke-width="3"/>
+      <rect x="${x - 3}" y="228" width="6" height="44" fill="#777" stroke="${OUT}" stroke-width="2"/>
+      <rect x="${x - 16}" y="144" width="32" height="88" rx="4" fill="#f4f4f4" stroke="${OUT}" stroke-width="3"/>
       ${[0, 1, 2, 3, 4].map((j) =>
-        `<rect class="nervCell" data-meter="${i}" data-cell="${j}" x="${x - 11}" y="${41 + (4 - j) * 16}" width="22" height="13" fill="#ffffff" stroke="#999" stroke-width="1.5"/>`).join("")}
+        `<rect class="nervCell" data-meter="${i}" data-cell="${j}" x="${x - 11}" y="${149 + (4 - j) * 16}" width="22" height="13" fill="#ffffff" stroke="#999" stroke-width="1.5"/>`).join("")}
     </g>`;
   }
 
@@ -226,16 +226,26 @@ function sceneArt() {
     <circle cx="116" cy="2" r="13" fill="#222" stroke="${OUT}" stroke-width="3"/><circle cx="116" cy="2" r="5" fill="#bbb"/>
   </g>
 
-  <!-- שלט "הבאסטה של גולן" תלוי מלמעלה -->
+  <!-- שלט "הבאסטה של גולן" תלוי מלמעלה, עם תמונה ממוסגרת של גולן -->
   <g id="bastaSign">
-    <line x1="430" y1="0" x2="438" y2="22" stroke="#555" stroke-width="4"/>
-    <line x1="770" y1="0" x2="762" y2="22" stroke="#555" stroke-width="4"/>
-    <g transform="rotate(-1.5 600 52)">
-      <rect x="420" y="22" width="360" height="60" rx="10" fill="#8a5a33" stroke="${OUT}" stroke-width="4"/>
-      <rect x="428" y="30" width="344" height="44" rx="7" fill="#f2b21d" stroke="#9c7100" stroke-width="3"/>
-      <text x="600" y="62" font-size="30" text-anchor="middle" fill="#b02418" font-weight="bold" style="paint-order:stroke" stroke="#fff" stroke-width="1">הבאסטה של גולן</text>
-      <text x="448" y="60" font-size="22" text-anchor="middle">🌭</text>
-      <text x="752" y="60" font-size="22" text-anchor="middle">👑</text>
+    <line x1="470" y1="0" x2="478" y2="16" stroke="#555" stroke-width="4"/>
+    <line x1="760" y1="0" x2="752" y2="16" stroke="#555" stroke-width="4"/>
+    <g transform="rotate(-1.5 615 60)">
+      <rect x="410" y="14" width="410" height="94" rx="10" fill="#8a5a33" stroke="${OUT}" stroke-width="4"/>
+      <rect x="418" y="22" width="394" height="78" rx="7" fill="#f2b21d" stroke="#9c7100" stroke-width="3"/>
+      <!-- תמונה ממוסגרת של גולן -->
+      <g transform="translate(434 26)">
+        <rect x="-6" y="-2" width="80" height="74" rx="5" fill="#6e4525" stroke="${OUT}" stroke-width="3.4"/>
+        <rect x="0" y="4" width="68" height="62" fill="#fff" stroke="#c8a040" stroke-width="3"/>
+        <image href="golan.png" x="3" y="7" width="62" height="56" preserveAspectRatio="xMidYMin slice"/>
+        <circle cx="-2" cy="2" r="2.4" fill="#d8b860"/>
+        <circle cx="70" cy="2" r="2.4" fill="#d8b860"/>
+        <circle cx="-2" cy="68" r="2.4" fill="#d8b860"/>
+        <circle cx="70" cy="68" r="2.4" fill="#d8b860"/>
+      </g>
+      <text x="652" y="72" font-size="32" text-anchor="middle" fill="#b02418" font-weight="bold" style="paint-order:stroke" stroke="#fff" stroke-width="1">הבאסטה של גולן</text>
+      <text x="790" y="50" font-size="22" text-anchor="middle">👑</text>
+      <text x="790" y="92" font-size="20" text-anchor="middle">🌭</text>
     </g>
   </g>
 

@@ -317,10 +317,9 @@ function spawnCustomer() {
   g.innerHTML = customerArt(variant, "normal");
   g.addEventListener("click", () => serveTo(slot));
   $("#custLayer").appendChild(g);
-  requestAnimationFrame(() => {
-    g.style.transition = "transform 1.6s ease-out";
-    g.setAttribute("transform", `translate(${SLOT_X[slot] - 100} ${250}) scale(1.05)`);
-  });
+  g.getBoundingClientRect(); // reflow — כדי שהמעבר יתחיל ממיקום הכניסה גם כשהטאב ברקע
+  g.style.transition = "transform 1.6s ease-out";
+  g.setAttribute("transform", `translate(${SLOT_X[slot] - 100} ${250}) scale(1.05)`);
 
   // מצמוץ
   const blink = setInterval(() => {
