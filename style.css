@@ -1,0 +1,143 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --wood: #8a5a33;
+  --wood-dark: #6e4525;
+  --cream: #fff6e8;
+  --red: #d63b2f;
+  --gold: #f2b21d;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: "Rubik", "Segoe UI", "Arial Hebrew", Arial, sans-serif;
+  background: #2a2a2a;
+  color: #33261a;
+  overflow: hidden;
+}
+
+.screen { display: none; height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ===== מסכי פתיחה/סיום ===== */
+#splash.active, #gameover.active {
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #8ecae6 0%, #bde6f5 45%, #f2d8a7 45.2%, #e8c890 100%);
+}
+#gameover.overlay.active {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 4, .72);
+  z-index: 50;
+}
+
+.splash-card {
+  background: var(--cream);
+  border: 6px solid var(--wood);
+  border-radius: 26px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.35);
+  padding: 22px 36px 28px;
+  text-align: center;
+  max-width: 560px;
+  width: 92%;
+  margin: 16px 0;
+}
+
+.portrait { width: 220px; margin: 0 auto; }
+.portrait svg, .portrait img { width: 100%; height: auto; display: block; }
+
+.game-title {
+  font-size: 42px;
+  color: var(--red);
+  text-shadow: 2px 3px 0 var(--gold);
+  margin: 6px 0 2px;
+}
+
+.tagline { font-size: 17px; color: var(--wood-dark); margin-bottom: 12px; }
+
+.howto {
+  text-align: right;
+  background: #fff;
+  border: 2px dashed var(--gold);
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+}
+.howto h3 { margin-bottom: 6px; color: var(--wood-dark); }
+.howto ul { list-style: none; }
+.howto li { padding: 3px 0; font-size: 14.5px; }
+
+.big-btn {
+  font-family: inherit;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #ff7043, var(--red));
+  border: none;
+  border-radius: 50px;
+  padding: 12px 44px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #a02418;
+  transition: transform .08s;
+}
+.big-btn:hover { transform: scale(1.04); }
+.big-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #a02418; }
+
+.high-score { margin-top: 12px; font-size: 17px; font-weight: 700; color: #8a6d00; }
+.over-stats { font-size: 22px; margin: 10px 0 4px; }
+.over-stats b { color: var(--red); font-size: 28px; }
+.over-record { font-size: 18px; font-weight: 700; color: var(--red); min-height: 24px; margin-bottom: 12px; }
+
+/* ===== במת המשחק ===== */
+#gamewrap.active {
+  align-items: center;
+  justify-content: center;
+  background: #2a2a2a;
+}
+#stage {
+  width: 100%;
+  height: 100%;
+  max-width: calc(100vh * 1.515);
+  max-height: calc(100vw / 1.515);
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* לקוח מוכן להגשה — זוהר וסמן יד */
+.customer { cursor: pointer; }
+.customer.ready { filter: drop-shadow(0 0 10px #ffe34d) brightness(1.06); }
+
+/* לקוח שפוצץ את המשחק */
+.customer.explode { animation: explodeShake .5s linear infinite; }
+@keyframes explodeShake {
+  0%,100% { translate: 0 0; }
+  20% { translate: -6px 2px; }
+  40% { translate: 6px -2px; }
+  60% { translate: -5px -2px; }
+  80% { translate: 5px 2px; }
+}
+
+/* מספר ניקוד קופץ */
+.scorePop { animation: popFloat .95s ease-out forwards; pointer-events: none; }
+@keyframes popFloat {
+  from { opacity: 1; translate: 0 0; }
+  to   { opacity: 0; translate: 0 -55px; }
+}
+
+/* שלט וודקה זוהר */
+.vodkaSign rect { animation: vodkaPulse 1s ease-in-out infinite alternate; }
+@keyframes vodkaPulse {
+  from { filter: none; }
+  to   { filter: drop-shadow(0 0 8px #a76bff); }
+}
+
+/* מכונית נוסעת */
+#car { animation: carDrive 9s linear infinite; }
+@keyframes carDrive {
+  from { transform: translate(1060px, 104px); }
+  to   { transform: translate(-220px, 104px); }
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מלך הנקניקיה 👑🌭</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== מסך פתיחה ===== -->
+<section id="splash" class="screen active">
+  <div class="splash-card">
+    <div id="splashPortrait" class="portrait"></div>
+    <h1 class="game-title">מלך הנקניקיה</h1>
+    <p class="tagline">הבאסטה של גולן — הדוכן הכי חם בעיר! 🌭</p>
+    <div class="howto">
+      <h3>איך משחקים?</h3>
+      <ul>
+        <li>🥖 לחץ על ערימת הלחמניות כדי לקחת לחמנייה</li>
+        <li>👆 לחץ על הגריל, הכרוב הכבוש והרטבים — בדיוק לפי המספרים שעל השלטים</li>
+        <li>🥤 אם בהזמנה יש שתייה — קח אותה מהמקרר. וודקה-XL שווה המון נקודות! 🍸</li>
+        <li>🧍 כשכל השלטים על 0 — לחץ על לקוח כדי להגיש לו</li>
+        <li>😡 לכל לקוח יש מד-עצבים. אם הוא מתמלא עד הסוף — המשחק נגמר!</li>
+        <li>📊 רכיב נכון +1, רכיב מיותר ‎-1, הגשה +5</li>
+      </ul>
+    </div>
+    <button id="startBtn" class="big-btn">התחל משחק ▶</button>
+    <div id="splashHigh" class="high-score"></div>
+  </div>
+</section>
+
+<!-- ===== במת המשחק ===== -->
+<section id="gamewrap" class="screen">
+  <svg id="stage" viewBox="0 0 1000 660" xmlns="http://www.w3.org/2000/svg"></svg>
+</section>
+
+<!-- ===== מסך סיום ===== -->
+<section id="gameover" class="screen overlay">
+  <div class="splash-card">
+    <h1 class="game-title">לקוח התפוצץ מעצבים! 😡</h1>
+    <p class="over-stats">הניקוד שלך: <b id="finalScore">0</b></p>
+    <p id="finalRecord" class="over-record"></p>
+    <button id="restartBtn" class="big-btn">שחק שוב 🔄</button>
+  </div>
+</section>
+
+<script src="art.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
