@@ -5,16 +5,15 @@ const $ = (s) => document.querySelector(s);
 const SVGNS = "http://www.w3.org/2000/svg";
 
 /* ---------- מצב ---------- */
-const SLOT_X = [370, 520, 670, 820]; // מרכזי עמדות הלקוחות (מימין לגריל, כדי שלא יסתירו אותו)
+const SLOT_X = [370, 520, 670, 820];
 const state = {
   running: false,
   musicOn: true,
   score: 0,
-  // ההזמנה הנוכחית (שלטים משותפים, כמו במקור)
-  order: { sausage: 0, kraut: 0, mustard: 0, ketchup: 0, drink: null, drinkQty: 0 },
   holdingBun: false,
-  bun: {},          // מה שכבר בלחמנייה
-  drinksOnTray: 0,  // שתייה שהונחה ליד
+  bun: {},
+  lastDrink: null,
+  drinksOnTray: 0,
   serving: false,
   customers: [null, null, null, null],
   usedVariants: [],
@@ -27,7 +26,7 @@ const state = {
 const HS_KEY = "hotdogKingHighScore";
 const highScore = () => Number(localStorage.getItem(HS_KEY) || 0);
 
-/* -------- ליידרבורד אונליין (JSONBlob — ללא שרת) -------- */
+/* -------- ליידרבורד אונליין -------- */
 const BLOB_URL = "https://jsonblob.com/api/jsonBlob/019eb5a6-e4c0-7b9f-9466-39466d232267";
 
 /* -------- מלאי תחנות -------- */
@@ -35,7 +34,12 @@ const MAX_STOCK = { sausage: 12, kraut: 18, mustard: 10, ketchup: 10, cola: 6, s
 const STATION_GID = { sausage: "st_sausage", kraut: "st_kraut", mustard: "st_mustard", ketchup: "st_ketchup",
                       cola: "st_cola", sprite: "st_sprite", water: "st_water", vodka: "st_vodka" };
 
-/* ---------- סאונד: אפקטים + מוזיקת רקע מסונתזת ---------- */
+/* -------- שמות לקוחות -------- */
+const CUSTOMER_NAMES = ["אורי","מיכל","דן","שרה","יוסי","רחל","נועם","הילה","ברק","ליאור",
+                        "טל","רוני","שחר","מאיה","עידו","ורד","עמית","ירון","נטע","גלעד",
+                        "בועז","רותם","אלון","יעל","ניר","גל","ענת","עוז","ריי","שיר"];
+
+/* ---------- סאונד ---------- */
 let actx = null;
 function ac() {
   actx = actx || new (window.AudioContext || window.webkitAudioContext)();
@@ -52,61 +56,69 @@ function tone(freq, dur, type = "square", vol = 0.1, when = 0) {
   } catch (e) {}
 }
 const sfx = {
-  bun:   () => tone(220, 0.1, "triangle", 0.14),
-  add:   () => { tone(740, 0.05, "square", 0.08); tone(990, 0.07, "square", 0.07, 0.05); },
-  wrong: () => tone(140, 0.22, "sawtooth", 0.12),
-  serve: () => { tone(1047, 0.09, "square", 0.1); tone(1319, 0.09, "square", 0.1, 0.09); tone(1568, 0.18, "square", 0.1, 0.18); },
-  vodka: () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.1, "triangle", 0.1, i * 0.07)); },
+  bun:     () => tone(220, 0.1, "triangle", 0.14),
+  add:     () => { tone(740, 0.05, "square", 0.08); tone(990, 0.07, "square", 0.07, 0.05); },
+  wrong:   () => tone(140, 0.22, "sawtooth", 0.12),
+  serve:   () => { tone(1047, 0.09, "square", 0.1); tone(1319, 0.09, "square", 0.1, 0.09); tone(1568, 0.18, "square", 0.1, 0.18); },
+  vodka:   () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.1, "triangle", 0.1, i * 0.07)); },
   grumble: () => { tone(110, 0.16, "sawtooth", 0.1); tone(92, 0.2, "sawtooth", 0.1, 0.12); },
-  over:  () => { tone(392, 0.3, "square", 0.12); tone(330, 0.3, "square", 0.12, 0.3); tone(262, 0.6, "square", 0.12, 0.6); },
+  over:    () => { tone(392, 0.3, "square", 0.12); tone(330, 0.3, "square", 0.12, 0.3); tone(262, 0.6, "square", 0.12, 0.6); },
 };
 
-/* מוזיקת רקע: לופ מזרחי קצבי (פריגיש), מסונתז — מופעל מהרדיו-טייפ */
-let musicTimer = null, musicStep = 0;
-const MELODY = [0, 4, 5, 4, 7, 5, 4, 0, 0, 4, 5, 7, 8, 7, 5, 4]; // חצאי טונים מעל D
-const BASS = [0, 0, 7, 0, 5, 0, 7, 0];
-function musicTick() {
-  if (!state.musicOn || !state.running) return;
-  const base = 294; // D4
-  const m = MELODY[musicStep % 16];
-  if (m !== null) tone(base * Math.pow(2, m / 12), 0.14, "square", 0.045);
-  if (musicStep % 2 === 0) {
-    const b = BASS[(musicStep / 2) % 8];
-    tone((base / 2) * Math.pow(2, b / 12), 0.2, "triangle", 0.075);
-  }
-  if (musicStep % 4 === 0) tone(2200, 0.03, "square", 0.025); // "מצילה"
-  musicStep++;
+/* מוזיקת רקע — YouTube IFrame */
+let ytPlayer = null;
+let ytReady = false;
+
+function loadYouTubeAPI() {
+  if (document.getElementById("yt-api-script")) return;
+  window.onYouTubeIframeAPIReady = function () {
+    ytReady = true;
+    const div = document.createElement("div");
+    div.id = "yt-player-container";
+    div.style.cssText = "position:fixed;width:1px;height:1px;top:-9999px;left:-9999px;";
+    document.body.appendChild(div);
+    ytPlayer = new YT.Player("yt-player-container", {
+      videoId: "BXGsBopP-Ds",
+      playerVars: { autoplay: 0, loop: 1, playlist: "BXGsBopP-Ds" },
+      events: {
+        onReady: () => { if (state.running && state.musicOn) ytPlayer.playVideo(); }
+      }
+    });
+  };
+  const s = document.createElement("script");
+  s.id = "yt-api-script";
+  s.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(s);
 }
+
 function startMusic() {
-  stopMusic();
-  musicTimer = setInterval(musicTick, 170);
   $("#musicNote") && $("#musicNote").setAttribute("opacity", "1");
+  if (!ytReady) { loadYouTubeAPI(); return; }
+  try { ytPlayer && ytPlayer.playVideo(); } catch(e) {}
 }
 function stopMusic() {
-  clearInterval(musicTimer); musicTimer = null;
   $("#musicNote") && $("#musicNote").setAttribute("opacity", "0");
+  try { ytPlayer && ytPlayer.pauseVideo(); } catch(e) {}
 }
 
 /* ---------- בניית הבמה ---------- */
 function buildStage() {
   $("#stage").innerHTML = sceneArt();
   $("#vendorFace").innerHTML = vendorFaceArt(false);
-  // מצמוץ של המוכר במראה
   setInterval(() => {
     if (!state.running) return;
     $("#vendorFace").innerHTML = vendorFaceArt(true);
     setTimeout(() => { $("#vendorFace").innerHTML = vendorFaceArt(false); }, 180);
   }, 3400);
 
-  // מאזיני תחנות
   bindStation("st_sausage", "sausage");
-  bindStation("st_kraut", "kraut");
+  bindStation("st_kraut",   "kraut");
   bindStation("st_mustard", "mustard");
   bindStation("st_ketchup", "ketchup");
   ["cola", "sprite", "water", "vodka"].forEach((d) => bindDrink(d));
   $("#bunStack").addEventListener("click", takeBun);
+  $("#trashBin").addEventListener("click", discardBun);
 
-  // פועל המטבח
   const workerEl = $("#workerChar");
   if (workerEl) workerEl.innerHTML = workerArt(false);
   $("#workerWindow").addEventListener("click", handleWorkerClick);
@@ -119,8 +131,7 @@ function buildStage() {
 
 /* ---------- מלאי תחנות ---------- */
 function updateStationVisual(key) {
-  const gid = STATION_GID[key];
-  const el = $(`#${gid}`);
+  const el = $(`#${STATION_GID[key]}`);
   if (!el) return;
   const n = state.stock[key];
   const lbl = $(`#mtStock_${key}`);
@@ -138,7 +149,6 @@ function updateStationVisual(key) {
     if (lbl) lbl.setAttribute("visibility", "hidden");
   }
 }
-
 function triggerWorkerWave() {
   const w = $("#workerChar");
   if (w && !w.dataset.waving) {
@@ -146,7 +156,6 @@ function triggerWorkerWave() {
     w.innerHTML = workerArt(true);
   }
 }
-
 function handleWorkerClick() {
   if (!state.running) return;
   const needsRestock = Object.keys(MAX_STOCK).some((k) => state.stock[k] < MAX_STOCK[k]);
@@ -164,72 +173,97 @@ function handleWorkerClick() {
   }
 }
 
-/* ---------- הזמנה (שלטים) ---------- */
-function newOrder() {
-  const o = state.order;
-  o.sausage = 1 + Math.floor(Math.random() * 2);          // 1-2
-  o.kraut = Math.floor(Math.random() * 4);                // 0-3
-  o.mustard = Math.floor(Math.random() * 2);              // 0-1
-  o.ketchup = Math.floor(Math.random() * 2);              // 0-1
+/* ---------- יצירת הזמנה לכל לקוח ---------- */
+function generateOrder() {
+  const sausage = 1 + Math.floor(Math.random() * 2);
+  const kraut   = Math.floor(Math.random() * 4);
+  const mustard = Math.floor(Math.random() * 2);
+  const ketchup = Math.floor(Math.random() * 2);
+  let drink = null, drinkQty = 0;
   const r = Math.random();
-  if (r < 0.08) { o.drink = "vodka"; o.drinkQty = 1; }
-  else if (r < 0.48) { o.drink = ["cola", "sprite", "water"][Math.floor(Math.random() * 3)]; o.drinkQty = 1; }
-  else { o.drink = null; o.drinkQty = 0; }
-  renderSigns();
+  if (r < 0.08)      { drink = "vodka"; drinkQty = 1; }
+  else if (r < 0.48) { drink = ["cola","sprite","water"][Math.floor(Math.random()*3)]; drinkQty = 1; }
+  return { sausage, kraut, mustard, ketchup, drink, drinkQty };
 }
 
-const DRINK_NAME = { cola: "קולה", sprite: "ספרייט", water: "מים", vodka: "וודקה XL" };
-function renderSigns() {
-  const o = state.order;
-  setSign("sgn_sausage", o.sausage);
-  setSign("sgn_kraut", o.kraut);
-  setSign("sgn_mustard", o.mustard);
-  setSign("sgn_ketchup", o.ketchup);
-  const ds = $("#sgn_drink");
-  const num = ds.querySelector(".sgnNum");
-  const lbl = ds.querySelector("text");
-  if (o.drink) {
-    lbl.textContent = DRINK_NAME[o.drink];
-    num.textContent = o.drinkQty <= 0 ? "✓" : o.drinkQty;
-    if (o.drink === "vodka") { ds.classList.add("vodkaSign"); lbl.setAttribute("fill", "#7b2ff7"); }
-    else { ds.classList.remove("vodkaSign"); lbl.setAttribute("fill", "#555"); }
-    num.setAttribute("fill", o.drinkQty <= 0 ? "#1d8a2e" : "#1c1c1c");
-  } else {
-    lbl.textContent = "שתייה";
-    lbl.setAttribute("fill", "#555");
-    num.textContent = "—";
-    num.setAttribute("fill", "#1c1c1c");
-    ds.classList.remove("vodkaSign");
-  }
-}
-function setSign(id, n) {
-  $(`#${id} .sgnNum`).textContent = n;
+/* ---------- בדיקת התאמת מגש ללקוח ---------- */
+function matchesBun(c) {
+  if (!state.holdingBun) return false;
+  const o = c.order, b = state.bun;
+  return (b.sausage||0) >= o.sausage &&
+         (b.kraut||0)   >= o.kraut   &&
+         (b.mustard||0) >= o.mustard &&
+         (b.ketchup||0) >= o.ketchup &&
+         (!o.drink || state.lastDrink === o.drink);
 }
 
-function orderDone() {
-  const o = state.order;
-  return state.holdingBun && o.sausage <= 0 && o.kraut <= 0 && o.mustard <= 0 && o.ketchup <= 0 && o.drinkQty <= 0;
+/* ---------- עדכון בונות ---------- */
+function renderBons() {
+  state.customers.forEach((c) => {
+    if (!c || c.leaving) return;
+    const g = document.getElementById(`cust${c.slot}`);
+    if (!g) return;
+    const ready = g.classList.contains("ready");
+    const drinkOk = !!c.order.drink && state.lastDrink === c.order.drink;
+    g.innerHTML = customerArt(c.variant, c.expr) + bonArt(c.order, c.name, state.bun, drinkOk);
+    g.classList.toggle("ready", ready);
+  });
 }
 
 /* ---------- לחמנייה ויד ---------- */
 function takeBun() {
   if (!state.running || state.serving || state.holdingBun) return;
-  state.holdingBun = true;
-  state.bun = {};
+  state.holdingBun  = true;
+  state.bun         = {};
+  state.lastDrink   = null;
+  state.drinksOnTray = 0;
+  $("#drinksPlaced").innerHTML = "";
   sfx.bun();
-  renderHand();
+  renderHand();     // calls renderBunHUD internally
   flashGroup("#bunStack");
+  renderBons();
+  checkReady();
 }
-
 function renderHand() {
   const layer = $("#handLayer");
-  if (!state.holdingBun) { layer.innerHTML = ""; return; }
-  layer.innerHTML = `<g id="rightHand" transform="translate(480 600)">${handBunArt(state.bun)}</g>`;
+  if (!state.holdingBun) { layer.innerHTML = ""; renderBunHUD(); return; }
+  layer.innerHTML = `<g id="rightHand" transform="translate(480 520)">${handBunArt(state.bun)}</g>`;
+  renderBunHUD();
 }
 
+const BUN_ICONS = { sausage: "🌭", kraut: "🥗", mustard: "💛", ketchup: "❤️" };
+function renderBunHUD() {
+  const hud = document.getElementById("bunHUD");
+  const txt = document.getElementById("bunHudText");
+  if (!hud || !txt) return;
+  if (!state.holdingBun) { hud.setAttribute("visibility", "hidden"); return; }
+  hud.setAttribute("visibility", "visible");
+  const parts = Object.entries(state.bun)
+    .filter(([, v]) => v > 0)
+    .map(([k, v]) => `${BUN_ICONS[k] || k}×${v}`);
+  if (state.lastDrink) parts.push("🥤×1");
+  txt.textContent = parts.length
+    ? `בלחמנייה: ${parts.join("  ")}`
+    : "בלחמנייה: לחמנייה ריקה — הוסף מרכיבים";
+}
+
+function discardBun() {
+  if (!state.running) return;
+  if (!state.holdingBun) { sfx.wrong(); return; }
+  state.holdingBun   = false;
+  state.bun          = {};
+  state.lastDrink    = null;
+  state.drinksOnTray = 0;
+  if ($("#drinksPlaced")) $("#drinksPlaced").innerHTML = "";
+  renderHand();
+  renderBons();
+  checkReady();
+  addScore(-1);
+  scorePop(696, 460, "🗑️ -1", "#cc1f10");
+}
 function reachAnim(x, y) {
   const fx = $("#fxLayer");
-  const g = document.createElementNS(SVGNS, "g");
+  const g  = document.createElementNS(SVGNS, "g");
   g.setAttribute("transform", `translate(${x} ${y + 220})`);
   g.innerHTML = reachHandArt();
   fx.appendChild(g);
@@ -261,29 +295,19 @@ function addIngredient(key, gid) {
   }
   state.stock[key]--;
   updateStationVisual(key);
-
   state.bun[key] = (state.bun[key] || 0) + 1;
+
   const box = $(`#${gid}`).getBBox();
   reachAnim(box.x + box.width / 2, box.y - 60);
-
-  if (state.order[key] > 0) {
-    state.order[key]--;
-    addScore(1);
-    sfx.add();
-  } else {
-    addScore(-1);
-    sfx.wrong();
-    scorePop(box.x + box.width / 2, box.y - 20, "-1", "#cc1f10");
-  }
-  renderSigns();
-  renderHand();
+  sfx.add();
+  renderHand();     // calls renderBunHUD internally
+  renderBons();
   checkReady();
 }
 
 function bindDrink(drink) {
   $(`#st_${drink}`).addEventListener("click", () => {
     if (!state.running || state.serving) return;
-    const o = state.order;
     const box = $(`#st_${drink}`).getBBox();
 
     if (state.stock[drink] <= 0) {
@@ -292,29 +316,23 @@ function bindDrink(drink) {
       triggerWorkerWave();
       return;
     }
+
+    const wantsDrink = state.customers.some(c => c && !c.leaving && c.order.drink === drink);
+    if (!wantsDrink) {
+      sfx.wrong();
+      scorePop(box.x + box.width / 2, box.y - 20, "אף אחד לא רוצה!", "#cc1f10");
+      return;
+    }
+
     state.stock[drink]--;
     updateStationVisual(drink);
-
     reachAnim(box.x + box.width / 2, box.y - 60);
-    if (o.drink === drink && o.drinkQty > 0) {
-      o.drinkQty--;
-      state.drinksOnTray++;
-      addScore(drink === "vodka" ? 10 : 1);
-      drink === "vodka" ? sfx.vodka() : sfx.add();
-      if (drink === "vodka") scorePop(box.x + box.width / 2, box.y - 20, "+10", "#7b2ff7");
-      placeDrink(drink);
-    } else if (o.drink === drink && o.drinkQty <= 0) {
-      // שתייה נכונה אבל כבר הוספת — אין עונש
-      sfx.wrong();
-      scorePop(box.x + box.width / 2, box.y - 20, "כבר הוספת!", "#e08000");
-      state.stock[drink]++; // מחזיר את המלאי שנלקח
-      updateStationVisual(drink);
-    } else {
-      addScore(-1);
-      sfx.wrong();
-      scorePop(box.x + box.width / 2, box.y - 20, "-1", "#cc1f10");
-    }
-    renderSigns();
+    state.lastDrink = drink;
+    state.drinksOnTray++;
+    drink === "vodka" ? sfx.vodka() : sfx.add();
+    placeDrink(drink);
+    renderBons();
+    renderBunHUD();
     checkReady();
   });
 }
@@ -341,20 +359,16 @@ function hintBun() {
   scorePop(886, 430, "קח לחמנייה!", "#1c5c9c");
   flashGroup("#bunStack");
 }
-
 function flashGroup(sel) {
   const el = $(sel);
   el.style.filter = "brightness(1.45)";
   setTimeout(() => (el.style.filter = ""), 140);
 }
-
-/* כשההזמנה הושלמה — הלקוחות זוהרים וניתנים ללחיצה */
 function checkReady() {
-  const ready = orderDone();
   state.customers.forEach((c) => {
     if (!c || c.leaving) return;
     const el = document.getElementById(`cust${c.slot}`);
-    if (el) el.classList.toggle("ready", ready);
+    if (el) el.classList.toggle("ready", matchesBun(c));
   });
 }
 
@@ -378,7 +392,7 @@ function scorePop(x, y, txt, color) {
 }
 
 /* ---------- לקוחות ---------- */
-function freeSlots() { return state.customers.map((c, i) => (c ? -1 : i)).filter((i) => i >= 0); }
+function freeSlots() { return state.customers.map((c, i) => (c ? -1 : i)).filter(i => i >= 0); }
 
 function spawnLoop() {
   clearTimeout(state.spawnTimer);
@@ -392,26 +406,28 @@ function spawnLoop() {
 function spawnCustomer() {
   const slots = freeSlots();
   if (!slots.length || !state.running) return;
-  const slot = slots[Math.floor(Math.random() * slots.length)];
-  const avail = [0, 1, 2, 3, 4, 5].filter((v) => !state.usedVariants.includes(v));
+  const slot    = slots[Math.floor(Math.random() * slots.length)];
+  const avail   = [0,1,2,3,4,5].filter(v => !state.usedVariants.includes(v));
   const variant = avail[Math.floor(Math.random() * avail.length)];
   state.usedVariants.push(variant);
 
-  const c = { slot, variant, stage: 0, leaving: false, expr: "normal" };
+  const name  = CUSTOMER_NAMES[Math.floor(Math.random() * CUSTOMER_NAMES.length)];
+  const order = generateOrder();
+  const c     = { slot, variant, stage: 0, leaving: false, expr: "normal", name, order };
   state.customers[slot] = c;
 
   const g = document.createElementNS(SVGNS, "g");
   g.setAttribute("id", `cust${slot}`);
   g.classList.add("customer");
-  g.setAttribute("transform", `translate(${1060} ${250}) scale(1.05)`);
-  g.innerHTML = customerArt(variant, "normal");
+  g.setAttribute("transform", `translate(1060 250) scale(1.05)`);
+  const drinkOk = !!order.drink && state.lastDrink === order.drink;
+  g.innerHTML = customerArt(variant, "normal") + bonArt(order, name, {}, drinkOk);
   g.addEventListener("click", () => serveTo(slot));
   $("#custLayer").appendChild(g);
-  g.getBoundingClientRect(); // reflow — כדי שהמעבר יתחיל ממיקום הכניסה גם כשהטאב ברקע
+  g.getBoundingClientRect();
   g.style.transition = "transform 1.6s ease-out";
-  g.setAttribute("transform", `translate(${SLOT_X[slot] - 100} ${250}) scale(1.05)`);
+  g.setAttribute("transform", `translate(${SLOT_X[slot] - 100} 250) scale(1.05)`);
 
-  // מצמוץ
   const blink = setInterval(() => {
     if (!state.customers[slot] || state.customers[slot] !== c || c.leaving) { clearInterval(blink); return; }
     setExpr(c, c.stage >= 3 ? "angryblink" : "blink");
@@ -419,36 +435,35 @@ function spawnCustomer() {
   }, 2600 + Math.random() * 900);
   state.blinkTimers.push(blink);
 
-  // מד עצבים: 6 שלבים לאורך 45-75 שניות
   const total = 45000 + Math.random() * 30000;
-  const step = total / 6;
+  const step  = total / 6;
   const mt = setInterval(() => {
     if (!state.customers[slot] || state.customers[slot] !== c || c.leaving) { clearInterval(mt); return; }
     c.stage++;
     if (c.stage <= 5) fillMeterCell(slot, c.stage - 1);
     if (c.stage === 3) { setExpr(c, "angry"); sfx.grumble(); }
-    if (c.stage >= 6) { clearInterval(mt); gameOver(slot); }
+    if (c.stage >= 6)  { clearInterval(mt); gameOver(slot); }
   }, step);
   state.meterTimers.push(mt);
 
   checkReady();
 }
 
-const NERV_COLORS = ["#339900", "#448800", "#715A00", "#933800", "#B51600"];
+const NERV_COLORS = ["#339900","#448800","#715A00","#933800","#B51600"];
 function fillMeterCell(slot, cell) {
   const el = document.querySelector(`.nervCell[data-meter="${slot}"][data-cell="${cell}"]`);
   if (el) el.setAttribute("fill", NERV_COLORS[cell]);
 }
 function clearMeter(slot) {
-  document.querySelectorAll(`.nervCell[data-meter="${slot}"]`).forEach((el) => el.setAttribute("fill", "#ffffff"));
+  document.querySelectorAll(`.nervCell[data-meter="${slot}"]`).forEach(el => el.setAttribute("fill", "#ffffff"));
 }
-
 function setExpr(c, expr) {
   c.expr = expr;
   const g = document.getElementById(`cust${c.slot}`);
-  if (g) {
+  if (g && !c.leaving) {
     const ready = g.classList.contains("ready");
-    g.innerHTML = customerArt(c.variant, expr);
+    const drinkOk = !!c.order.drink && state.lastDrink === c.order.drink;
+    g.innerHTML = customerArt(c.variant, expr) + bonArt(c.order, c.name, state.bun, drinkOk);
     g.classList.toggle("ready", ready);
   }
 }
@@ -457,33 +472,42 @@ function setExpr(c, expr) {
 function serveTo(slot) {
   const c = state.customers[slot];
   if (!c || c.leaving || !state.running || state.serving) return;
-  if (!orderDone()) {
-    if (state.holdingBun) { sfx.wrong(); scorePop(SLOT_X[slot], 230, "ההזמנה לא מוכנה!", "#cc1f10"); }
-    else hintBun();
+
+  if (!matchesBun(c)) {
+    if (!state.holdingBun) hintBun();
+    else { sfx.wrong(); scorePop(SLOT_X[slot], 230, "לא מתאים!", "#cc1f10"); }
     return;
   }
   state.serving = true;
 
-  // יד מגישה — הלחמנייה עפה ללקוח
   const hand = $("#rightHand");
   if (hand) {
     hand.style.transition = "transform .35s ease-in";
     hand.setAttribute("transform", `translate(${SLOT_X[slot]} 330) scale(.6)`);
   }
-  const hadVodka = state.order.drink === "vodka";
+
+  const o = c.order, b = state.bun;
+  let pts = 5;
+  ["sausage","kraut","mustard","ketchup"].forEach((k) => {
+    pts += Math.min(b[k]||0, o[k]) * (k === "sausage" ? 2 : 1);
+    pts -= Math.max(0, (b[k]||0) - o[k]);
+  });
+  if (o.drink === "vodka") pts += 10;
+  pts = Math.max(1, pts);
+  const hadVodka = o.drink === "vodka";
 
   setTimeout(() => {
-    state.holdingBun = false;
-    state.bun = {};
+    state.holdingBun   = false;
+    state.bun          = {};
+    state.lastDrink    = null;
     state.drinksOnTray = 0;
     $("#drinksPlaced").innerHTML = "";
     renderHand();
 
-    addScore(5);
+    addScore(pts);
     hadVodka ? sfx.vodka() : sfx.serve();
-    scorePop(SLOT_X[slot], 220, hadVodka ? "+5 🍸" : "+5", "#1d8a2e");
+    scorePop(SLOT_X[slot], 220, hadVodka ? `+${pts} 🍸` : `+${pts}`, "#1d8a2e");
 
-    // הלקוח מרוצה והולך
     c.leaving = true;
     setExpr(c, "happy");
     clearMeter(slot);
@@ -495,11 +519,11 @@ function serveTo(slot) {
       setTimeout(() => g.remove(), 1350);
     }
     setTimeout(() => {
-      state.usedVariants = state.usedVariants.filter((v) => v !== c.variant);
+      state.usedVariants = state.usedVariants.filter(v => v !== c.variant);
       if (state.customers[slot] === c) state.customers[slot] = null;
     }, 1300);
 
-    newOrder();
+    renderBons();
     state.serving = false;
     checkReady();
   }, 360);
@@ -515,40 +539,39 @@ function clearAllTimers() {
 }
 
 function startGame() {
-  ac(); // פתיחת אודיו במחוות משתמש
+  ac();
   clearAllTimers();
-  state.running = true;
-  state.score = 0;
-  state.holdingBun = false;
-  state.bun = {};
+  state.running      = true;
+  state.score        = 0;
+  state.holdingBun   = false;
+  state.bun          = {};
+  state.lastDrink    = null;
   state.drinksOnTray = 0;
-  state.serving = false;
-  state.customers = [null, null, null, null];
+  state.serving      = false;
+  state.customers    = [null, null, null, null];
   state.usedVariants = [];
-  state.stock = { ...MAX_STOCK };
+  state.stock        = { ...MAX_STOCK };
   const ns = $("#nameSection"); if (ns) ns.style.display = "";
 
   buildStage();
   addScore(0);
-  newOrder();
   renderHand();
   $("#splash").classList.remove("active");
   $("#gameover").classList.remove("active");
   $("#gamewrap").classList.add("active");
 
-  spawnCustomer();        // לקוח ראשון מיד
+  spawnCustomer();
   spawnLoop();
-  if (state.musicOn) { musicStep = 0; startMusic(); }
+  if (state.musicOn) { startMusic(); }
 }
 
-function gameOver(slot) {
+async function gameOver(slot) {
   if (!state.running) return;
   state.running = false;
   clearAllTimers();
   stopMusic();
   sfx.over();
 
-  // הלקוח שפוצץ את המשחק רועד
   const g = document.getElementById(`cust${slot}`);
   if (g) g.classList.add("explode");
 
@@ -566,8 +589,8 @@ function gameOver(slot) {
     const nameInput = $("#playerName");
     if (nameInput) nameInput.value = savedName;
 
-    const lbOver = $("#leaderboardOver");
-    const entries = await fetchLeaderboard();
+    const lbOver   = $("#leaderboardOver");
+    const entries  = await fetchLeaderboard();
     if (lbOver) renderLeaderboard(entries, lbOver, savedName);
 
     $("#gameover").classList.add("active");
@@ -590,47 +613,36 @@ async function fetchLeaderboard() {
     if (!res.ok) throw new Error();
     const data = await res.json();
     return (data.scores || []).sort((a, b) => b.score - a.score).slice(0, 10);
-  } catch (_) {
-    return getLocalLeaderboard();
-  }
+  } catch (_) { return getLocalLeaderboard(); }
 }
-
 function getLocalLeaderboard() {
-  try { return JSON.parse(localStorage.getItem("hotdogLeaderboard") || "[]").sort((a, b) => b.score - a.score).slice(0, 10); }
+  try { return JSON.parse(localStorage.getItem("hotdogLeaderboard") || "[]").sort((a,b)=>b.score-a.score).slice(0,10); }
   catch (_) { return []; }
 }
-
 async function submitScore(name, score) {
   const entry = { name, score, date: Date.now() };
-  // שמירה מקומית
   const local = JSON.parse(localStorage.getItem("hotdogLeaderboard") || "[]");
   local.push(entry);
   localStorage.setItem("hotdogLeaderboard", JSON.stringify(local.sort((a,b)=>b.score-a.score).slice(0,100)));
-  // שמירה אונליין
   try {
-    const res = await fetch(BLOB_URL, { headers: { "Accept": "application/json" } });
-    const data = await res.json();
+    const res   = await fetch(BLOB_URL, { headers: { "Accept": "application/json" } });
+    const data  = await res.json();
     const scores = (data.scores || []);
     scores.push(entry);
-    scores.sort((a, b) => b.score - a.score);
+    scores.sort((a,b)=>b.score-a.score);
     if (scores.length > 100) scores.splice(100);
-    await fetch(BLOB_URL, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scores })
-    });
+    await fetch(BLOB_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scores }) });
   } catch (_) {}
 }
-
 function renderLeaderboard(entries, container, myName) {
   if (!entries || !entries.length) {
     container.innerHTML = '<p class="lb-loading">אין ניקודים עדיין — שחקו!</p>';
     return;
   }
-  const medals = ["🥇", "🥈", "🥉"];
+  const medals = ["🥇","🥈","🥉"];
   const rows = entries.map((e, i) =>
-    `<tr class="lb-rank-${i + 1}${e.name === myName ? " lb-me" : ""}">
-       <td>${medals[i] || i + 1}</td><td>${e.name || "??"}</td><td>${e.score}</td></tr>`
+    `<tr class="lb-rank-${i+1}${e.name===myName?" lb-me":""}">
+       <td>${medals[i]||i+1}</td><td>${e.name||"??"}</td><td>${e.score}</td></tr>`
   ).join("");
   container.innerHTML = `<table class="lb-table"><tr><th>מקום</th><th>שם</th><th>ניקוד</th></tr>${rows}</table>`;
 }
@@ -640,11 +652,8 @@ function init() {
   $("#splashPortrait").innerHTML = `<img src="golan.png" alt="גולן — מלך הנקניקיה">`;
   const hs = highScore();
   $("#splashHigh").textContent = hs ? `🏆 השיא שלך: ${hs}` : "";
-
-  // ליידרבורד בדף הפתיחה
   const lbContent = $("#lbContent");
   if (lbContent) fetchLeaderboard().then(e => renderLeaderboard(e, lbContent, localStorage.getItem("hotdogPlayerName") || ""));
-
   $("#startBtn").addEventListener("click", startGame);
   $("#restartBtn").addEventListener("click", startGame);
 }
