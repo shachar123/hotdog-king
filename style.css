@@ -135,6 +135,38 @@ body {
   to   { filter: drop-shadow(0 0 8px #a76bff); }
 }
 
+/* ===== ליידרבורד ===== */
+.leaderboard-wrap { margin: 10px 0; text-align: right; }
+.leaderboard-wrap h3 { color: var(--wood-dark); margin-bottom: 6px; }
+.lb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.lb-table th { background: var(--wood); color: #fff; padding: 5px 8px; }
+.lb-table td { padding: 4px 8px; border-bottom: 1px solid #e8d9c0; text-align: center; }
+.lb-table tr:nth-child(even) td { background: #faf4e8; }
+.lb-table tr.lb-me td { background: #fffbd0 !important; font-weight: bold; }
+.lb-rank-1 td { color: #b8900a; font-weight: bold; }
+.lb-rank-2 td { color: #666; }
+.lb-rank-3 td { color: #8a4a10; }
+.lb-loading { color: #888; font-size: 13px; padding: 6px 0; }
+
+/* ===== שדה שם שחקן ===== */
+.name-section { display: flex; gap: 10px; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
+.name-input {
+  font-family: inherit; font-size: 18px; padding: 8px 14px;
+  border: 3px solid var(--wood); border-radius: 10px;
+  background: var(--cream); text-align: right; direction: rtl; width: 180px;
+}
+.name-input:focus { outline: none; border-color: var(--gold); }
+.small-btn { font-size: 17px !important; padding: 9px 22px !important; }
+
+/* ===== תחנות ריקות/נמוכות ===== */
+.station-empty { filter: grayscale(1) brightness(0.58) !important; cursor: not-allowed; }
+.station-low { animation: lowPulse 0.75s ease-in-out infinite alternate; }
+@keyframes lowPulse { to { filter: brightness(1.4) saturate(1.9); } }
+
+/* ===== חלון פועל מטבח ===== */
+#workerWindow { transition: filter .18s; cursor: pointer; }
+#workerWindow:hover { filter: brightness(1.12); }
+
 /* מכונית נוסעת */
 #car { animation: carDrive 9s linear infinite; }
 @keyframes carDrive {

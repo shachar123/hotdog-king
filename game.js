@@ -21,10 +21,19 @@ const state = {
   spawnTimer: null,
   meterTimers: [],
   blinkTimers: [],
+  stock: {},
 };
 
 const HS_KEY = "hotdogKingHighScore";
 const highScore = () => Number(localStorage.getItem(HS_KEY) || 0);
+
+/* -------- ליידרבורד אונליין (JSONBlob — ללא שרת) -------- */
+const BLOB_URL = "https://jsonblob.com/api/jsonBlob/019eb5a6-e4c0-7b9f-9466-39466d232267";
+
+/* -------- מלאי תחנות -------- */
+const MAX_STOCK = { sausage: 12, kraut: 18, mustard: 10, ketchup: 10, cola: 6, sprite: 6, water: 6, vodka: 3 };
+const STATION_GID = { sausage: "st_sausage", kraut: "st_kraut", mustard: "st_mustard", ketchup: "st_ketchup",
+                      cola: "st_cola", sprite: "st_sprite", water: "st_water", vodka: "st_vodka" };
 
 /* ---------- סאונד: אפקטים + מוזיקת רקע מסונתזת ---------- */
 let actx = null;
@@ -96,10 +105,63 @@ function buildStage() {
   bindStation("st_ketchup", "ketchup");
   ["cola", "sprite", "water", "vodka"].forEach((d) => bindDrink(d));
   $("#bunStack").addEventListener("click", takeBun);
+
+  // פועל המטבח
+  const workerEl = $("#workerChar");
+  if (workerEl) workerEl.innerHTML = workerArt(false);
+  $("#workerWindow").addEventListener("click", handleWorkerClick);
+
   $("#boombox").addEventListener("click", () => {
     state.musicOn = !state.musicOn;
     state.musicOn ? startMusic() : stopMusic();
   });
+}
+
+/* ---------- מלאי תחנות ---------- */
+function updateStationVisual(key) {
+  const gid = STATION_GID[key];
+  const el = $(`#${gid}`);
+  if (!el) return;
+  const n = state.stock[key];
+  const lbl = $(`#mtStock_${key}`);
+  if (n <= 0) {
+    el.classList.add("station-empty");
+    el.classList.remove("station-low");
+    if (lbl) lbl.setAttribute("visibility", "visible");
+  } else if (n <= 2) {
+    el.classList.remove("station-empty");
+    el.classList.add("station-low");
+    if (lbl) lbl.setAttribute("visibility", "hidden");
+    triggerWorkerWave();
+  } else {
+    el.classList.remove("station-empty", "station-low");
+    if (lbl) lbl.setAttribute("visibility", "hidden");
+  }
+}
+
+function triggerWorkerWave() {
+  const w = $("#workerChar");
+  if (w && !w.dataset.waving) {
+    w.dataset.waving = "1";
+    w.innerHTML = workerArt(true);
+  }
+}
+
+function handleWorkerClick() {
+  if (!state.running) return;
+  const needsRestock = Object.keys(MAX_STOCK).some((k) => state.stock[k] < MAX_STOCK[k]);
+  if (needsRestock) {
+    Object.keys(MAX_STOCK).forEach((k) => { state.stock[k] = MAX_STOCK[k]; });
+    Object.keys(STATION_GID).forEach((k) => updateStationVisual(k));
+    sfx.serve();
+    scorePop(84, 188, "🚚 מלא!", "#1d8a2e");
+  }
+  const w = $("#workerChar");
+  if (w) {
+    delete w.dataset.waving;
+    w.innerHTML = workerArt(true);
+    setTimeout(() => { w.innerHTML = workerArt(false); }, 1200);
+  }
 }
 
 /* ---------- הזמנה (שלטים) ---------- */
@@ -188,6 +250,16 @@ function addIngredient(key, gid) {
   if (!state.holdingBun) { hintBun(); return; }
   if ((state.bun[key] || 0) >= 4) { sfx.wrong(); return; }
 
+  if (state.stock[key] <= 0) {
+    sfx.wrong();
+    const box = $(`#${gid}`).getBBox();
+    scorePop(box.x + box.width / 2, box.y - 10, "ריק! לחץ על הפועל 👆", "#cc1f10");
+    triggerWorkerWave();
+    return;
+  }
+  state.stock[key]--;
+  updateStationVisual(key);
+
   state.bun[key] = (state.bun[key] || 0) + 1;
   const box = $(`#${gid}`).getBBox();
   reachAnim(box.x + box.width / 2, box.y - 60);
@@ -211,6 +283,16 @@ function bindDrink(drink) {
     if (!state.running || state.serving) return;
     const o = state.order;
     const box = $(`#st_${drink}`).getBBox();
+
+    if (state.stock[drink] <= 0) {
+      sfx.wrong();
+      scorePop(box.x + box.width / 2, box.y - 10, "ריק! לחץ על הפועל 👆", "#cc1f10");
+      triggerWorkerWave();
+      return;
+    }
+    state.stock[drink]--;
+    updateStationVisual(drink);
+
     reachAnim(box.x + box.width / 2, box.y - 60);
     if (o.drink === drink && o.drinkQty > 0) {
       o.drinkQty--;
@@ -435,6 +517,8 @@ function startGame() {
   state.serving = false;
   state.customers = [null, null, null, null];
   state.usedVariants = [];
+  state.stock = { ...MAX_STOCK };
+  const ns = $("#nameSection"); if (ns) ns.style.display = "";
 
   buildStage();
   addScore(0);
@@ -464,13 +548,83 @@ function gameOver(slot) {
   const isRecord = state.score > hs;
   if (isRecord) localStorage.setItem(HS_KEY, state.score);
 
-  setTimeout(() => {
+  setTimeout(async () => {
     $("#finalScore").textContent = state.score;
     $("#finalRecord").textContent = isRecord
       ? "🏆 שיא חדש! אתה מלך הנקניקיה האמיתי!"
       : `השיא שלך: ${Math.max(hs, state.score)}`;
+
+    const savedName = localStorage.getItem("hotdogPlayerName") || "";
+    const nameInput = $("#playerName");
+    if (nameInput) nameInput.value = savedName;
+
+    const lbOver = $("#leaderboardOver");
+    const entries = await fetchLeaderboard();
+    if (lbOver) renderLeaderboard(entries, lbOver, savedName);
+
     $("#gameover").classList.add("active");
+
+    $("#submitNameBtn").onclick = async () => {
+      const name = (nameInput ? nameInput.value.trim() : "") || "אנונימי";
+      localStorage.setItem("hotdogPlayerName", name);
+      const ns = $("#nameSection"); if (ns) ns.style.display = "none";
+      await submitScore(name, state.score);
+      const updated = await fetchLeaderboard();
+      if (lbOver) renderLeaderboard(updated, lbOver, name);
+    };
   }, 1200);
+}
+
+/* ---------- ליידרבורד אונליין ---------- */
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch(BLOB_URL, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    return (data.scores || []).sort((a, b) => b.score - a.score).slice(0, 10);
+  } catch (_) {
+    return getLocalLeaderboard();
+  }
+}
+
+function getLocalLeaderboard() {
+  try { return JSON.parse(localStorage.getItem("hotdogLeaderboard") || "[]").sort((a, b) => b.score - a.score).slice(0, 10); }
+  catch (_) { return []; }
+}
+
+async function submitScore(name, score) {
+  const entry = { name, score, date: Date.now() };
+  // שמירה מקומית
+  const local = JSON.parse(localStorage.getItem("hotdogLeaderboard") || "[]");
+  local.push(entry);
+  localStorage.setItem("hotdogLeaderboard", JSON.stringify(local.sort((a,b)=>b.score-a.score).slice(0,100)));
+  // שמירה אונליין
+  try {
+    const res = await fetch(BLOB_URL, { headers: { "Accept": "application/json" } });
+    const data = await res.json();
+    const scores = (data.scores || []);
+    scores.push(entry);
+    scores.sort((a, b) => b.score - a.score);
+    if (scores.length > 100) scores.splice(100);
+    await fetch(BLOB_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scores })
+    });
+  } catch (_) {}
+}
+
+function renderLeaderboard(entries, container, myName) {
+  if (!entries || !entries.length) {
+    container.innerHTML = '<p class="lb-loading">אין ניקודים עדיין — שחקו!</p>';
+    return;
+  }
+  const medals = ["🥇", "🥈", "🥉"];
+  const rows = entries.map((e, i) =>
+    `<tr class="lb-rank-${i + 1}${e.name === myName ? " lb-me" : ""}">
+       <td>${medals[i] || i + 1}</td><td>${e.name || "??"}</td><td>${e.score}</td></tr>`
+  ).join("");
+  container.innerHTML = `<table class="lb-table"><tr><th>מקום</th><th>שם</th><th>ניקוד</th></tr>${rows}</table>`;
 }
 
 /* ---------- אתחול ---------- */
@@ -478,6 +632,11 @@ function init() {
   $("#splashPortrait").innerHTML = `<img src="golan.png" alt="גולן — מלך הנקניקיה">`;
   const hs = highScore();
   $("#splashHigh").textContent = hs ? `🏆 השיא שלך: ${hs}` : "";
+
+  // ליידרבורד בדף הפתיחה
+  const lbContent = $("#lbContent");
+  if (lbContent) fetchLeaderboard().then(e => renderLeaderboard(e, lbContent, localStorage.getItem("hotdogPlayerName") || ""));
+
   $("#startBtn").addEventListener("click", startGame);
   $("#restartBtn").addEventListener("click", startGame);
 }

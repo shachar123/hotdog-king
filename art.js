@@ -186,6 +186,27 @@ function reachHandArt() {
   </g>`;
 }
 
+/* ---------- פועל המטבח (חלון שירות בקיר) ---------- */
+function workerArt(waving) {
+  const wave = waving
+    ? `<path d="M20 6 Q28 -12 20 -28 Q28 -30 32 -10 Q30 2 24 12Z" fill="#d8a273" stroke="${OUT}" stroke-width="1.6"/>`
+    : ``;
+  return `<g>
+    <path d="M-36 46 Q-24 26 0 24 Q24 26 36 46Z" fill="#3a6ed6" stroke="${OUT}" stroke-width="2"/>
+    <rect x="-12" y="26" width="24" height="26" rx="4" fill="#f0f0e4" stroke="${OUT}" stroke-width="1.4"/>
+    <rect x="-9" y="16" width="18" height="14" rx="4" fill="#e8b06c" stroke="${OUT}" stroke-width="1.8"/>
+    <ellipse cx="0" cy="0" rx="24" ry="26" fill="#e8b06c" stroke="${OUT}" stroke-width="2.4"/>
+    <path d="M-22 -8 Q-18 -34 0 -36 Q18 -34 22 -8 Q10 -20 0 -20 Q-10 -20 -22 -8Z" fill="#3a6ed6" stroke="${OUT}" stroke-width="1.8"/>
+    <path d="M-26 -6 Q0 -16 26 -6 L24 -2 Q0 -12 -24 -2Z" fill="#2a5cb8" stroke="${OUT}" stroke-width="1.2"/>
+    <ellipse cx="-9" cy="-2" rx="4.5" ry="5.5" fill="#fff" stroke="${OUT}" stroke-width="1.4"/>
+    <ellipse cx="9" cy="-2" rx="4.5" ry="5.5" fill="#fff" stroke="${OUT}" stroke-width="1.4"/>
+    <circle cx="-9" cy="-1" r="2.2" fill="#2a1a08"/>
+    <circle cx="9" cy="-1" r="2.2" fill="#2a1a08"/>
+    <path d="M-8 12 Q0 ${waving ? 19 : 16} 8 12" stroke="${OUT}" stroke-width="2" fill="none" stroke-linecap="round"/>
+    ${wave}
+  </g>`;
+}
+
 /* ---------- הרקע המלא: רחוב, קיר, דוכן ---------- */
 function sceneArt() {
   // בניינים
@@ -212,6 +233,9 @@ function sceneArt() {
   }
 
   return `
+  <defs>
+    <clipPath id="wClip"><rect x="16" y="196" width="136" height="58"/></clipPath>
+  </defs>
   <!-- שמיים/כביש -->
   <rect x="0" y="0" width="1000" height="660" fill="#9c9c9c"/>
   ${buildings}
@@ -288,6 +312,18 @@ function sceneArt() {
     <rect x="74" y="128" width="24" height="14" rx="3" fill="#f4f4f4" stroke="${OUT}" stroke-width="2"/>
     <path d="M30 120 L60 96 M142 120 L112 96" stroke="${OUT}" stroke-width="4"/>
     <text id="musicNote" x="86" y="100" font-size="30" text-anchor="middle" opacity="0">🎵</text>
+  </g>
+
+  <!-- חלון מטבח: הפועל ממלא המלאי -->
+  <g id="workerWindow">
+    <rect x="10" y="192" width="148" height="68" rx="7" fill="#6888a8" stroke="${OUT}" stroke-width="3.4"/>
+    <rect x="16" y="198" width="136" height="56" rx="4" fill="#aac8e0" stroke="${OUT}" stroke-width="2.4"/>
+    <g clip-path="url(#wClip)">
+      <g id="workerChar" transform="translate(84 238)"></g>
+    </g>
+    <line x1="84" y1="198" x2="84" y2="254" stroke="${OUT}" stroke-width="2" opacity=".35"/>
+    <line x1="16" y1="226" x2="152" y2="226" stroke="${OUT}" stroke-width="2" opacity=".35"/>
+    <rect x="10" y="192" width="148" height="68" rx="7" fill="none" stroke="${OUT}" stroke-width="3.4"/>
   </g>
 
   <!-- מראה עם המוכר -->
@@ -407,6 +443,19 @@ function sceneArt() {
   ${signArt("sgn_mustard", 500, 420, "חרדל")}
   ${signArt("sgn_ketchup", 588, 432, "קטשופ")}
   ${signArt("sgn_drink", 706, 408, "שתייה")}
+
+  <!-- תוויות "ריק!" על תחנות ריקות — נגלות ע"י JS -->
+  <g id="stockLabels" font-size="20" font-weight="bold" text-anchor="middle" font-family="Arial"
+     fill="#d63b2f" stroke="#fff" stroke-width="1.2" paint-order="stroke">
+    <text id="mtStock_sausage"  x="150" y="510" visibility="hidden">ריק!</text>
+    <text id="mtStock_kraut"    x="380" y="520" visibility="hidden">ריק!</text>
+    <text id="mtStock_mustard"  x="512" y="508" visibility="hidden" font-size="16">ריק!</text>
+    <text id="mtStock_ketchup"  x="562" y="508" visibility="hidden" font-size="16">ריק!</text>
+    <text id="mtStock_cola"     x="637" y="500" visibility="hidden" font-size="14">ריק!</text>
+    <text id="mtStock_sprite"   x="675" y="500" visibility="hidden" font-size="14">ריק!</text>
+    <text id="mtStock_water"    x="705" y="500" visibility="hidden" font-size="13">ריק!</text>
+    <text id="mtStock_vodka"    x="745" y="488" visibility="hidden" font-size="13">ריק!</text>
+  </g>
 
   <!-- שכבות דינמיות -->
   <g id="drinksPlaced"></g>

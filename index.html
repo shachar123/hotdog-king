@@ -25,6 +25,10 @@
         <li>📊 רכיב נכון +1, רכיב מיותר ‎-1, הגשה +5</li>
       </ul>
     </div>
+    <div id="leaderboard" class="leaderboard-wrap">
+      <h3>🏆 טבלת שיאים</h3>
+      <div id="lbContent"><p class="lb-loading">טוען...</p></div>
+    </div>
     <button id="startBtn" class="big-btn">התחל משחק ▶</button>
     <div id="splashHigh" class="high-score"></div>
   </div>
@@ -41,6 +45,11 @@
     <h1 class="game-title">לקוח התפוצץ מעצבים! 😡</h1>
     <p class="over-stats">הניקוד שלך: <b id="finalScore">0</b></p>
     <p id="finalRecord" class="over-record"></p>
+    <div id="nameSection" class="name-section">
+      <input type="text" id="playerName" class="name-input" placeholder="שמך לליידרבורד" maxlength="20">
+      <button id="submitNameBtn" class="big-btn small-btn">שלח 🏆</button>
+    </div>
+    <div id="leaderboardOver" class="leaderboard-wrap"></div>
     <button id="restartBtn" class="big-btn">שחק שוב 🔄</button>
   </div>
 </section>
