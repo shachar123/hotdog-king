@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hot Dog Hustle — הוט דוג הסל</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== מסך פתיחה ===== -->
+<div id="screen-splash" class="screen active">
+  <div class="splash-inner">
+    <div id="splash-art"></div>
+    <h1 class="game-title">Hot Dog Hustle</h1>
+    <p class="game-subtitle">דוכן הנקניקיות הכי עמוס בעיר 🌭</p>
+    <div class="howto">
+      <p>🔥 צלו נקניקיות בדיוק בזמן — לא נא, לא שרוף!</p>
+      <p>🍞 קלו לחמניות לבונוס</p>
+      <p>🧅 הוסיפו תוספות לפי ההזמנה והגישו מהר</p>
+      <p>📦 שימו לב למלאי — מלאו מחדש לפני שנגמר</p>
+      <p>😡 3 טעויות — והיום נכשל!</p>
+    </div>
+    <button id="btn-start" class="btn-big">התחל משחק ▶</button>
+    <div id="splash-stats">
+      <span>💰 מטבעות: <b id="splash-coins">0</b></span>
+      <span>🏆 שיא: <b id="splash-highscore">0</b></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== מסך משחק ===== -->
+<div id="screen-game" class="screen">
+  <div id="hud">
+    <div class="hud-item">💯 <b id="hud-score">0</b></div>
+    <div class="hud-item">💰 <b id="hud-coins">0</b></div>
+    <div class="hud-item">🔥 קומבו <b id="hud-combo">×1</b></div>
+    <div class="hud-item">📅 יום <b id="hud-day">1</b></div>
+    <div class="hud-item">🎯 יעד <b id="hud-goal">50</b></div>
+    <div class="hud-item" id="hud-clock">🕐 <b id="hud-time">90</b></div>
+    <div class="hud-item" id="hud-strikes"></div>
+    <button id="btn-mute" class="btn-icon">🔊</button>
+    <button id="btn-pause" class="btn-icon">⏸</button>
+  </div>
+  <div id="game-area">
+    <svg id="game-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+  <div id="toast-msg"></div>
+  <div id="rush-banner">🚨 שעת לחץ! 🚨</div>
+</div>
+
+<!-- ===== מסך סוף יום ===== -->
+<div id="screen-dayend" class="screen">
+  <div class="panel">
+    <h2 id="dayend-title">היום הסתיים!</h2>
+    <div id="dayend-stats"></div>
+    <div id="dayend-rating"></div>
+    <button id="btn-nextday" class="btn-big">ליום הבא ▶</button>
+  </div>
+</div>
+
+<!-- ===== מסך סיום משחק ===== -->
+<div id="screen-gameover" class="screen">
+  <div class="panel">
+    <h2>😡 המשחק נגמר!</h2>
+    <div id="gameover-stats"></div>
+    <button id="btn-restart" class="btn-big">שחק שוב 🔄</button>
+  </div>
+</div>
+
+<div id="yt-player" aria-hidden="true"></div>
+
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/art.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/customers.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
